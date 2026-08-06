@@ -10,6 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
+<script src="vendor/three.min.js"></script>
+
 <style>
   :root{
     --pink:#ff3d8a;
@@ -51,7 +53,7 @@
     isolation:isolate;
   }
 
-  /* ── SCENE (CSS/SVG synthwave backdrop) ── */
+  /* ── SCENE: CSS sky/sun backdrop + real 3D layer on top ── */
   .scene{
     position:absolute; inset:0;
     transition:background 900ms ease;
@@ -76,37 +78,10 @@
     -webkit-mask-position: 0 20%;
     mask-position: 0 20%;
   }
-  .scene .skyline{
-    position:absolute; left:0; right:0; bottom:26%; height:30%;
-    display:flex; align-items:flex-end; gap:2px; opacity:0.85;
-  }
-  .scene .bldg{ background:var(--bldg,#1a1330); flex:0 0 auto; position:relative; }
-  .scene .bldg i{
-    position:absolute; width:3px; height:3px; background:var(--win,#ffd23f);
-    box-shadow:0 0 4px var(--win,#ffd23f);
-    opacity:.85;
-  }
-  .scene .palm{ position:absolute; bottom:24%; width:90px; opacity:0.92; filter:brightness(0.15); }
-  .scene .grid{
-    position:absolute; left:0; right:0; bottom:0; height:26%;
-    background:
-      repeating-linear-gradient(90deg, var(--grid,rgba(255,80,170,0.55)) 0 2px, transparent 2px 48px),
-      linear-gradient(0deg, rgba(0,0,0,0.0), rgba(0,0,0,0.0));
-    -webkit-mask-image:linear-gradient(to top, black 0%, transparent 95%);
-            mask-image:linear-gradient(to top, black 0%, transparent 95%);
-    transform:perspective(220px) rotateX(58deg);
-    transform-origin:bottom;
-  }
-  .scene .grid::before{
-    content:""; position:absolute; inset:0;
-    background:repeating-linear-gradient(0deg, var(--grid,rgba(255,80,170,0.55)) 0 2px, transparent 2px 34px);
-  }
-  .scene .horizon-glow{
-    position:absolute; left:0; right:0; bottom:22%; height:18%;
-    background:linear-gradient(to top,
-      var(--horizon,rgba(255,150,120,0.5)) 0%,
-      color-mix(in srgb, var(--horizon,rgba(255,150,120,0.5)) 45%, transparent) 45%,
-      transparent 100%);
+  #three-canvas{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    display:block;
   }
   .scene .scan{
     position:absolute; inset:0; pointer-events:none; opacity:0.05;
@@ -121,7 +96,7 @@
   .scene[data-theme="sunset"]{ --sky1:#ff9a56; --sky2:#ff4d7d; --sky3:#3b1256; }
   .scene[data-theme="dusk"]{ --sky1:#6b4bd6; --sky2:#3a2a7a; --sky3:#120a2e; }
   .scene[data-theme="night"]{ --sky1:#12233f; --sky2:#0b1330; --sky3:#050914; }
-  .scene[data-theme="neon"]{ --sky1:#3a0a4e; --sky2:#170a35; --sky3:#050310; --grid:rgba(80,220,255,0.5); --bldg:#0d0a1c; }
+  .scene[data-theme="neon"]{ --sky1:#3a0a4e; --sky2:#170a35; --sky3:#050310; }
   .scene[data-theme="dawn"]{ --sky1:#a9d6ff; --sky2:#ffd6ea; --sky3:#5a4a9c; }
   .scene .sky{ background:linear-gradient(to bottom, var(--sky1), var(--sky2) 55%, var(--sky3)); }
   .scene[data-theme="dusk"] .sun-clip,
@@ -186,6 +161,7 @@
     left:clamp(150px,26vw,290px); right:clamp(10px,3vw,40px);
     top:clamp(70px,14vh,110px); bottom:clamp(70px,13vh,100px);
     display:flex; align-items:center;
+    perspective:1400px;
   }
   .panel{
     background:var(--panel);
@@ -195,6 +171,10 @@
     max-height:100%; overflow-y:auto;
     width:100%;
     animation:panelIn 420ms cubic-bezier(.16,1,.3,1) both;
+    transform-style:preserve-3d;
+    box-shadow:0 25px 60px rgba(0,0,0,0.45);
+    transition:box-shadow 200ms ease;
+    will-change:transform;
   }
   @keyframes panelIn{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
   .panel h2{
@@ -316,6 +296,7 @@
       min-height:100dvh; height:auto; border-radius:0;
     }
     .scene{ position:fixed; }
+    #three-canvas{ position:fixed; }
     .hud-title{ position:static; padding:18px 16px 0; }
     .hud-top-right{ position:static; text-align:left; padding:6px 16px 0; }
     .mission-menu{
@@ -344,9 +325,7 @@
       <div class="scene" id="scene" data-theme="sunset">
         <div class="sky"></div>
         <div class="sun-clip"><div class="sun"></div></div>
-        <div class="skyline" id="skyline"></div>
-        <div class="horizon-glow"></div>
-        <div class="grid"></div>
+        <canvas id="three-canvas"></canvas>
         <div class="scan"></div>
         <div class="vignette"></div>
       </div>
@@ -585,28 +564,169 @@
     starsEl.innerHTML = '★'.repeat(filled) + [...Array(5-filled)].map(()=>'<span class="dim">★</span>').join('');
   }
 
-  function buildSkyline(){
-    const el = document.getElementById('skyline');
-    el.innerHTML = '';
-    const n = 22;
-    for (let i=0;i<n;i++){
-      const div = document.createElement('div');
-      const h = 20 + Math.round(Math.abs(Math.sin(i*1.7))*70) + (i%5===0?30:0);
-      div.className = 'bldg';
-      div.style.width = (100/n) + '%';
-      div.style.height = h + '%';
-      const winCount = Math.round(h/12);
-      for (let w=0; w<winCount; w++){
-        const win = document.createElement('i');
-        win.style.left = (10 + Math.random()*70) + '%';
-        win.style.bottom = (8 + w*16 + Math.random()*4) + '%';
-        if (Math.random() < 0.4) win.style.opacity = '0.15';
-        div.appendChild(win);
+  // ── Real 3D scene (Three.js): neon skyline, scrolling grid, starfield, camera parallax ──
+  const THEME_3D = {
+    sunset: { fog:0x3b1256, grid:0xff3d8a, building:0x2a1440, edge:0xffd23f, particle:0xffe3b0 },
+    dusk:   { fog:0x120a2e, grid:0x8a5cff, building:0x1f1440, edge:0xffd23f, particle:0xd9c8ff },
+    night:  { fog:0x050914, grid:0x2ea7ff, building:0x14182a, edge:0x9fe8ff, particle:0xbfe3ff },
+    neon:   { fog:0x08051c, grid:0x28e8e0, building:0x120a24, edge:0xff3d8a, particle:0x9df7f0 },
+    dawn:   { fog:0x8f7ecf, grid:0xff9ad1, building:0x2a2450, edge:0xffd23f, particle:0xffe6f5 },
+  };
+
+  let three = null;
+  (function initThree(){
+    const canvas = document.getElementById('three-canvas');
+    if (!canvas || typeof THREE === 'undefined') return;
+
+    const screenEl = document.getElementById('screen');
+    let rect = canvas.getBoundingClientRect();
+
+    const tScene = new THREE.Scene();
+    tScene.fog = new THREE.Fog(THEME_3D.sunset.fog, 9, 42);
+
+    const camera = new THREE.PerspectiveCamera(58, rect.width / rect.height, 0.1, 200);
+    camera.position.set(0, 3.3, 8);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(rect.width, rect.height);
+
+    // Scrolling neon grid (two segments swapped to fake infinite forward travel)
+    function buildGridLines(color){
+      const size = 120, divisions = 80, half = size / 2, pts = [];
+      for (let i = 0; i <= divisions; i++){
+        const p = -half + (size / divisions) * i;
+        pts.push(-half, 0, p,  half, 0, p);
+        pts.push(p, 0, -half,  p, 0, half);
       }
-      el.appendChild(div);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      const mat = new THREE.LineBasicMaterial({
+        color, transparent: true, opacity: 0.9,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      });
+      return new THREE.LineSegments(geo, mat);
     }
-  }
-  buildSkyline();
+    const grid = buildGridLines(THEME_3D.sunset.grid);
+    tScene.add(grid);
+
+    // Low-poly neon skyline receding into the fog on both sides of the "road"
+    const buildingMat = new THREE.MeshBasicMaterial({ color: THEME_3D.sunset.building });
+    const edgeMat = new THREE.LineBasicMaterial({
+      color: THEME_3D.sunset.edge, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const buildings = new THREE.Group();
+    for (let i = 0; i < 36; i++){
+      const side = i % 2 === 0 ? -1 : 1;
+      const z = -6 - Math.floor(i / 2) * 4.2 - Math.random() * 2;
+      const x = side * (6 + Math.random() * 11);
+      const w = 1.6 + Math.random() * 2, h = 2 + Math.random() * 11, d = 1.6 + Math.random() * 2;
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geo, buildingMat);
+      mesh.position.set(x, h / 2, z);
+      buildings.add(mesh);
+      const edges = new THREE.EdgesGeometry(geo);
+      const line = new THREE.LineSegments(edges, edgeMat);
+      line.position.copy(mesh.position);
+      buildings.add(line);
+    }
+    tScene.add(buildings);
+
+    // Starfield / ambient particles
+    const particleCount = 300;
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++){
+      positions[i * 3] = (Math.random() - 0.5) * 110;
+      positions[i * 3 + 1] = Math.random() * 34 + 2;
+      positions[i * 3 + 2] = -Math.random() * 90 + 5;
+    }
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const pMat = new THREE.PointsMaterial({
+      color: THEME_3D.sunset.particle, size: 0.16, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const particles = new THREE.Points(pGeo, pMat);
+    tScene.add(particles);
+
+    function setTheme(themeName){
+      const t = THEME_3D[themeName] || THEME_3D.sunset;
+      tScene.fog.color.setHex(t.fog);
+      grid.material.color.setHex(t.grid);
+      buildingMat.color.setHex(t.building);
+      edgeMat.color.setHex(t.edge);
+      pMat.color.setHex(t.particle);
+    }
+
+    // Mouse parallax + idle drift
+    let mouseX = 0, mouseY = 0;
+    window.addEventListener('mousemove', (e) => {
+      const r = screenEl.getBoundingClientRect();
+      mouseX = (e.clientX - r.left) / r.width - 0.5;
+      mouseY = (e.clientY - r.top) / r.height - 0.5;
+    });
+
+    let dash = 0; // brief forward "warp" pulse triggered on mission transitions
+    function triggerDash(){ dash = 1; }
+
+    function onResize(){
+      rect = canvas.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return;
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(rect.width, rect.height);
+    }
+    window.addEventListener('resize', onResize);
+    new ResizeObserver(onResize).observe(screenEl);
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let frameId;
+    function animate(){
+      frameId = requestAnimationFrame(animate);
+      const t = performance.now() * 0.00015;
+
+      if (!prefersReducedMotion){
+        grid.position.z = (t * 800) % 2.5;
+        particles.rotation.y += 0.0006;
+      }
+
+      dash += (0 - dash) * 0.06;
+      camera.position.x += (mouseX * 3.2 - camera.position.x) * 0.04;
+      camera.position.y += (3.3 - mouseY * 1.6 - camera.position.y) * 0.04;
+      camera.fov = 58 - dash * 6;
+      camera.updateProjectionMatrix();
+      camera.lookAt(0, -0.6, -14);
+
+      renderer.render(tScene, camera);
+    }
+    animate();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { cancelAnimationFrame(frameId); frameId = null; }
+      else if (!frameId) animate();
+    });
+
+    three = { setTheme, triggerDash };
+  })();
+
+  // 3D tilt on the content panel, following the cursor
+  (function initPanelTilt(){
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const stage = document.querySelector('.content-stage');
+    stage.addEventListener('mousemove', (e) => {
+      const p = document.querySelector('.panel');
+      if (!p) return;
+      const r = p.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      p.style.transform = `rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg)`;
+    });
+    stage.addEventListener('mouseleave', () => {
+      const p = document.querySelector('.panel');
+      if (p) p.style.transform = '';
+    });
+  })();
 
   function goTo(index, {skipTransition} = {}){
     const s = sections[index];
@@ -614,6 +734,7 @@
 
     const doRender = () => {
       scene.dataset.theme = s.theme;
+      if (three) three.setTheme(s.theme);
       titleEl1.textContent = s.title1;
       titleEl2.textContent = s.title2;
       objectiveText.textContent = s.objective;
@@ -621,6 +742,8 @@
       panel.classList.remove('panel');
       void panel.offsetWidth;
       panel.classList.add('panel');
+      panel.style.transform = '';
+      panel.addEventListener('animationend', () => { panel.style.animation = 'none'; }, { once: true });
 
       locText.textContent = s.location;
       locSub.textContent = s.sub;
@@ -646,6 +769,7 @@
       return;
     }
 
+    if (three) three.triggerDash();
     mpReward.textContent = `+Respect · +$${(250000).toLocaleString('en-US')}`;
     missionPassed.classList.add('show');
     setTimeout(()=>{
