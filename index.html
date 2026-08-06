@@ -108,6 +108,13 @@
     .nav-links { display: flex; align-items: center; gap: var(--space-6); }
     .nav-links a { font-size: var(--text-sm); color: var(--color-text-muted); }
     .nav-links a:hover { color: var(--color-text); }
+    .game-mode-link {
+      background: linear-gradient(90deg, #ff3d8a, #ff8a3d);
+      color: #fff !important; padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full); font-weight: 600; font-size: var(--text-xs) !important;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .game-mode-link:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(255,61,138,0.4); }
     .theme-btn {
       width: 36px; height: 36px; border-radius: var(--radius-full);
       display: flex; align-items: center; justify-content: center;
@@ -115,7 +122,10 @@
       transition: all var(--transition);
     }
     .theme-btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
-    @media (max-width: 640px) { .nav-links { display: none; } }
+    @media (max-width: 640px) {
+      .nav-links { display: flex; gap: 0; }
+      .nav-links a:not(.game-mode-link) { display: none; }
+    }
 
     /* ── SCENE CANVAS (fixed, full-page, scroll-driven 3D backdrop) ── */
     #scene-canvas {
@@ -357,6 +367,7 @@
       <a href="#tools">Tools</a>
       <a href="#education">Education</a>
       <a href="#contact">Contact</a>
+      <a href="arcade.html" class="game-mode-link">🎮 Game Mode</a>
     </div>
     <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>

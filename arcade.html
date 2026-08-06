@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mukesh Kumar — Game Mode Portfolio</title>
+<meta name="description" content="Mukesh Kumar's portfolio, retro-arcade / synthwave video-game HUD edition." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --pink:#ff3d8a;
+    --cyan:#28e8e0;
+    --gold:#ffd23f;
+    --hud-text:#eef3f8;
+    --hud-muted:#9fb0c3;
+    --panel:rgba(9,12,22,0.72);
+    --panel-border:rgba(255,255,255,0.12);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:#050507;
+    font-family:'Oswald',sans-serif;
+    color:var(--hud-text);
+    min-height:100dvh;
+    display:flex; align-items:center; justify-content:center;
+    padding:clamp(0.5rem,2vw,2rem);
+    overflow-x:hidden;
+  }
+
+  .cabinet{
+    width:100%; max-width:1400px;
+    aspect-ratio:16/9;
+    background:#000;
+    border-radius:18px;
+    padding:clamp(6px,1vw,14px);
+    box-shadow:0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  @media (max-height: 700px){ .cabinet{ aspect-ratio:auto; height:94vh; } }
+
+  .screen{
+    position:relative;
+    width:100%; height:100%;
+    border-radius:10px;
+    overflow:hidden;
+    background:#0a0612;
+    isolation:isolate;
+  }
+
+  /* ── SCENE (CSS/SVG synthwave backdrop) ── */
+  .scene{
+    position:absolute; inset:0;
+    transition:background 900ms ease;
+  }
+  .scene .sky{ position:absolute; inset:0; }
+  .scene .sun-clip{
+    position:absolute; left:50%; top:38%; width:34%; aspect-ratio:1;
+    transform:translate(-50%,-50%);
+    border-radius:50%; overflow:hidden;
+    box-shadow:0 0 70px 20px var(--sun-glow,rgba(255,120,120,0.35));
+    transition:opacity 700ms ease;
+  }
+  .scene .sun{
+    position:absolute; inset:0;
+    background:linear-gradient(var(--sun-a,#ffe08a), var(--sun-b,#ff5f6d));
+    -webkit-mask-image:repeating-linear-gradient(
+      to bottom, #000 0 6%, transparent 6% 9.5%
+    );
+    mask-image:repeating-linear-gradient(
+      to bottom, #000 0 6%, transparent 6% 9.5%
+    );
+    -webkit-mask-position: 0 20%;
+    mask-position: 0 20%;
+  }
+  .scene .skyline{
+    position:absolute; left:0; right:0; bottom:26%; height:30%;
+    display:flex; align-items:flex-end; gap:2px; opacity:0.85;
+  }
+  .scene .bldg{ background:var(--bldg,#1a1330); flex:0 0 auto; position:relative; }
+  .scene .bldg i{
+    position:absolute; width:3px; height:3px; background:var(--win,#ffd23f);
+    box-shadow:0 0 4px var(--win,#ffd23f);
+    opacity:.85;
+  }
+  .scene .palm{ position:absolute; bottom:24%; width:90px; opacity:0.92; filter:brightness(0.15); }
+  .scene .grid{
+    position:absolute; left:0; right:0; bottom:0; height:26%;
+    background:
+      repeating-linear-gradient(90deg, var(--grid,rgba(255,80,170,0.55)) 0 2px, transparent 2px 48px),
+      linear-gradient(0deg, rgba(0,0,0,0.0), rgba(0,0,0,0.0));
+    -webkit-mask-image:linear-gradient(to top, black 0%, transparent 95%);
+            mask-image:linear-gradient(to top, black 0%, transparent 95%);
+    transform:perspective(220px) rotateX(58deg);
+    transform-origin:bottom;
+  }
+  .scene .grid::before{
+    content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(0deg, var(--grid,rgba(255,80,170,0.55)) 0 2px, transparent 2px 34px);
+  }
+  .scene .horizon-glow{
+    position:absolute; left:0; right:0; bottom:22%; height:18%;
+    background:linear-gradient(to top,
+      var(--horizon,rgba(255,150,120,0.5)) 0%,
+      color-mix(in srgb, var(--horizon,rgba(255,150,120,0.5)) 45%, transparent) 45%,
+      transparent 100%);
+  }
+  .scene .scan{
+    position:absolute; inset:0; pointer-events:none; opacity:0.05;
+    background:repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px);
+  }
+  .scene .vignette{
+    position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+  }
+
+  /* Theme palettes per section */
+  .scene[data-theme="sunset"]{ --sky1:#ff9a56; --sky2:#ff4d7d; --sky3:#3b1256; }
+  .scene[data-theme="dusk"]{ --sky1:#6b4bd6; --sky2:#3a2a7a; --sky3:#120a2e; }
+  .scene[data-theme="night"]{ --sky1:#12233f; --sky2:#0b1330; --sky3:#050914; }
+  .scene[data-theme="neon"]{ --sky1:#3a0a4e; --sky2:#170a35; --sky3:#050310; --grid:rgba(80,220,255,0.5); --bldg:#0d0a1c; }
+  .scene[data-theme="dawn"]{ --sky1:#a9d6ff; --sky2:#ffd6ea; --sky3:#5a4a9c; }
+  .scene .sky{ background:linear-gradient(to bottom, var(--sky1), var(--sky2) 55%, var(--sky3)); }
+  .scene[data-theme="dusk"] .sun-clip,
+  .scene[data-theme="night"] .sun-clip{ opacity:0.35; }
+  .scene[data-theme="neon"] .sun-clip{ opacity:0.25; }
+
+  /* ── HUD TOP-LEFT: mission title ── */
+  .hud-title{
+    position:absolute; top:clamp(10px,3vh,28px); left:clamp(12px,3vw,32px);
+    z-index:5; line-height:1;
+    text-shadow:0 3px 12px rgba(0,0,0,0.6);
+  }
+  .hud-title .t1{
+    font-size:clamp(1.5rem,4.2vw,3rem); font-weight:700; letter-spacing:0.02em;
+    color:#eef3f8; text-transform:uppercase;
+  }
+  .hud-title .t2{
+    font-family:'Caveat',cursive; font-weight:700; color:var(--pink);
+    font-size:clamp(1.1rem,2.6vw,1.9rem); margin-top:-0.2em;
+  }
+
+  /* ── HUD TOP-RIGHT: clock / cash / stars ── */
+  .hud-top-right{
+    position:absolute; top:clamp(10px,3vh,24px); right:clamp(12px,3vw,28px);
+    z-index:5; text-align:right; font-family:'Share Tech Mono',monospace;
+    text-shadow:0 2px 8px rgba(0,0,0,0.7);
+  }
+  .hud-clock{ font-size:clamp(1rem,2.4vw,1.5rem); letter-spacing:0.05em; }
+  .hud-cash{ color:#33ff9c; font-size:clamp(0.9rem,2vw,1.2rem); margin-top:2px; }
+  .hud-stars{ margin-top:4px; letter-spacing:2px; color:var(--gold); font-size:clamp(0.8rem,1.8vw,1.05rem); }
+  .hud-stars .dim{ color:rgba(255,255,255,0.25); }
+
+  /* ── LEFT MISSION MENU ── */
+  .mission-menu{
+    position:absolute; z-index:5;
+    left:clamp(10px,3vw,32px); top:50%; transform:translateY(-50%);
+    width:clamp(150px,22vw,240px);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .mission-menu button{
+    all:unset; cursor:pointer;
+    font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:0.04em;
+    font-size:clamp(0.72rem,1.5vw,0.95rem); text-transform:uppercase;
+    color:var(--hud-muted);
+    padding:6px 10px; border-left:3px solid transparent;
+    display:flex; align-items:center; gap:8px;
+    transition:all 150ms ease;
+    text-shadow:0 1px 4px rgba(0,0,0,0.7);
+  }
+  .mission-menu button:hover{ color:#fff; }
+  .mission-menu button.active{
+    color:#fff; background:linear-gradient(90deg, rgba(255,61,138,0.85), rgba(255,61,138,0));
+    border-left-color:#fff;
+  }
+  .mission-menu button .chk{ color:#38f28a; width:1em; flex-shrink:0; font-size:0.85em; }
+  .mission-menu .exit-btn{ margin-top:10px; color:rgba(255,255,255,0.55); }
+  .mission-menu .exit-btn:hover{ color:#fff; }
+
+  /* ── CONTENT STAGE ── */
+  .content-stage{
+    position:absolute; z-index:4;
+    left:clamp(150px,26vw,290px); right:clamp(10px,3vw,40px);
+    top:clamp(70px,14vh,110px); bottom:clamp(70px,13vh,100px);
+    display:flex; align-items:center;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:14px;
+    padding:clamp(14px,2.4vw,30px);
+    max-height:100%; overflow-y:auto;
+    width:100%;
+    animation:panelIn 420ms cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes panelIn{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+  .panel h2{
+    font-size:clamp(1.1rem,2.6vw,1.6rem); text-transform:uppercase; letter-spacing:0.03em;
+    margin-bottom:0.6em; color:#fff;
+  }
+  .panel p{ color:var(--hud-muted); font-size:clamp(0.82rem,1.6vw,0.98rem); line-height:1.6; margin-bottom:0.6em; }
+  .panel .lede{ color:#fff; }
+
+  .tag-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .tag{
+    font-size:clamp(0.68rem,1.3vw,0.82rem); font-weight:600; letter-spacing:0.02em;
+    padding:5px 12px; border-radius:999px;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff;
+  }
+  .skill-block{ margin-bottom:14px; }
+  .skill-block h3{ font-size:clamp(0.78rem,1.5vw,0.92rem); color:var(--cyan); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+
+  .inv-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; margin-top:6px; }
+  .inv-slot{
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:8px;
+    padding:8px 10px; font-size:clamp(0.68rem,1.3vw,0.82rem); font-weight:600; color:#fff; text-align:center;
+  }
+
+  .job-card{ margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed rgba(255,255,255,0.14); }
+  .job-card:last-child{ border-bottom:none; }
+  .job-card .role{ color:#fff; font-weight:700; font-size:clamp(0.92rem,1.8vw,1.05rem); }
+  .job-card .co{ color:var(--pink); font-weight:600; font-size:clamp(0.78rem,1.5vw,0.9rem); }
+  .job-card .period{ float:right; color:var(--hud-muted); font-size:clamp(0.68rem,1.3vw,0.78rem); }
+  .job-card ul{ list-style:none; margin-top:6px; }
+  .job-card li{ color:var(--hud-muted); font-size:clamp(0.76rem,1.4vw,0.88rem); padding-left:14px; position:relative; margin-bottom:4px; }
+  .job-card li::before{ content:"›"; position:absolute; left:0; color:var(--cyan); }
+
+  .trophy-grid{ display:grid; gap:10px; margin-top:6px; }
+  .trophy{
+    display:flex; align-items:center; gap:12px;
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:10px;
+    padding:10px 14px;
+  }
+  .trophy .medal{ font-size:1.4rem; }
+  .trophy .name{ color:#fff; font-weight:700; font-size:clamp(0.8rem,1.5vw,0.92rem); text-transform:uppercase; letter-spacing:0.02em; }
+  .trophy .desc{ color:var(--hud-muted); font-size:clamp(0.72rem,1.3vw,0.82rem); }
+
+  .edu-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:6px; }
+  .edu-card{ background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:10px 12px; }
+  .edu-card .yr{ color:var(--gold); font-size:0.72rem; font-weight:700; letter-spacing:0.05em; }
+  .edu-card .deg{ color:#fff; font-weight:700; font-size:clamp(0.8rem,1.5vw,0.9rem); margin:2px 0; }
+  .edu-card .sch{ color:var(--hud-muted); font-size:clamp(0.7rem,1.3vw,0.8rem); }
+
+  .contact-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; color:var(--hud-muted); font-size:clamp(0.78rem,1.4vw,0.92rem); }
+  .contact-row a{ color:#fff; text-decoration:none; }
+  .cta-btn{
+    display:inline-flex; align-items:center; gap:8px; margin-top:8px;
+    background:var(--pink); color:#fff; font-weight:700; letter-spacing:0.03em;
+    padding:9px 22px; border-radius:999px; text-decoration:none; text-transform:uppercase; font-size:0.82rem;
+    box-shadow:0 6px 18px rgba(255,61,138,0.4);
+  }
+  .cta-ghost{
+    display:inline-flex; align-items:center; gap:8px; margin-top:8px; margin-left:8px;
+    border:1px solid rgba(255,255,255,0.3); color:#fff; font-weight:600;
+    padding:8px 20px; border-radius:999px; text-decoration:none; text-transform:uppercase; font-size:0.78rem;
+  }
+
+  .avatar-frame{
+    width:96px; height:96px; border-radius:14px; overflow:hidden; flex-shrink:0;
+    border:2px solid var(--pink); box-shadow:0 0 22px rgba(255,61,138,0.45);
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#2a1440,#160b26); font-size:2rem; font-weight:700; color:#fff;
+  }
+  .avatar-frame img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .about-head{ display:flex; gap:16px; align-items:center; margin-bottom:10px; }
+
+  /* ── BOTTOM-LEFT OBJECTIVE BOX ── */
+  .hud-objective{
+    position:absolute; z-index:5; left:clamp(10px,3vw,32px); bottom:clamp(10px,2.4vh,24px);
+    width:clamp(180px,26vw,270px);
+    background:rgba(6,8,16,0.55); border:1px solid rgba(255,255,255,0.14); border-radius:10px;
+    padding:10px 12px; backdrop-filter:blur(4px);
+  }
+  .hud-objective .label{ color:var(--pink); font-size:0.62rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+  .hud-objective .text{ color:#fff; font-size:clamp(0.72rem,1.4vw,0.86rem); font-weight:600; margin-top:2px; }
+  .hud-objective svg{ margin-top:6px; width:100%; height:26px; display:block; }
+
+  /* ── LOCATION TOAST ── */
+  .location-toast{
+    position:absolute; z-index:6; left:50%; bottom:clamp(70px,13vh,100px); transform:translate(-50%,10px);
+    text-align:center; opacity:0; transition:all 400ms ease; pointer-events:none;
+  }
+  .location-toast .loc{ font-size:clamp(1rem,2.4vw,1.4rem); font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.7); }
+  .location-toast .sub{ font-family:'Caveat',cursive; color:var(--cyan); font-size:1.1rem; }
+  .location-toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  /* ── MISSION PASSED OVERLAY ── */
+  .mission-passed{
+    position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.55); opacity:0; pointer-events:none; transition:opacity 220ms ease;
+  }
+  .mission-passed.show{ opacity:1; }
+  .mission-passed .mp1{ font-size:clamp(1.8rem,5vw,3.4rem); font-weight:700; color:#fff; letter-spacing:0.05em; text-transform:uppercase; text-shadow:0 4px 20px rgba(0,0,0,0.8); }
+  .mission-passed .mp2{ color:var(--gold); font-family:'Share Tech Mono',monospace; margin-top:8px; font-size:clamp(0.8rem,2vw,1.1rem); }
+
+  /* ── QUOTE + FOOTER HINT ── */
+  .hud-quote{
+    position:absolute; z-index:5; right:clamp(12px,3vw,32px); bottom:clamp(10px,2.4vh,24px);
+    text-align:right; max-width:260px; font-family:'Caveat',cursive; color:rgba(255,255,255,0.75);
+    font-size:clamp(0.85rem,1.8vw,1.05rem); line-height:1.3;
+  }
+  .key-hint{
+    position:absolute; z-index:5; left:50%; bottom:6px; transform:translateX(-50%);
+    color:rgba(255,255,255,0.4); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase;
+    font-family:'Share Tech Mono',monospace;
+  }
+
+  @media (max-width:720px){
+    body{ padding:0; align-items:flex-start; }
+    .cabinet{ aspect-ratio:auto; padding:0; border-radius:0; box-shadow:none; max-width:none; }
+    .screen{
+      position:relative; display:flex; flex-direction:column;
+      min-height:100dvh; height:auto; border-radius:0;
+    }
+    .scene{ position:fixed; }
+    .hud-title{ position:static; padding:18px 16px 0; }
+    .hud-top-right{ position:static; text-align:left; padding:6px 16px 0; }
+    .mission-menu{
+      position:static; transform:none; width:auto;
+      flex-direction:row; flex-wrap:wrap; gap:6px; padding:16px;
+    }
+    .mission-menu button{
+      border-left:none; padding:5px 12px; border-radius:6px;
+      background:rgba(0,0,0,0.35);
+    }
+    .mission-menu button.active{ background:var(--pink); }
+    .mission-menu .exit-btn{ margin-top:0; padding:5px 12px; }
+    .content-stage{
+      position:static; left:auto; right:auto; top:auto; bottom:auto;
+      padding:0 16px 40px; height:auto; flex:1;
+    }
+    .hud-objective, .hud-quote, .key-hint, .location-toast{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="cabinet">
+    <div class="screen" id="screen">
+
+      <div class="scene" id="scene" data-theme="sunset">
+        <div class="sky"></div>
+        <div class="sun-clip"><div class="sun"></div></div>
+        <div class="skyline" id="skyline"></div>
+        <div class="horizon-glow"></div>
+        <div class="grid"></div>
+        <div class="scan"></div>
+        <div class="vignette"></div>
+      </div>
+
+      <div class="hud-title">
+        <div class="t1" id="hud-title-1">Mukesh Kumar</div>
+        <div class="t2" id="hud-title-2">Portfolio</div>
+      </div>
+
+      <div class="hud-top-right">
+        <div class="hud-clock" id="clock">00:00</div>
+        <div class="hud-cash" id="cash">$0</div>
+        <div class="hud-stars" id="stars">★★★★★</div>
+      </div>
+
+      <nav class="mission-menu" id="menu"></nav>
+
+      <div class="content-stage">
+        <div class="panel" id="panel"></div>
+      </div>
+
+      <div class="hud-objective">
+        <div class="label">Current Objective</div>
+        <div class="text" id="objective-text">Start the game</div>
+        <svg viewBox="0 0 200 40" preserveAspectRatio="none"><polyline id="graph-line" points="0,35 40,30 80,22 120,18 160,10 200,4" fill="none" stroke="#38f28a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <div class="location-toast" id="location-toast">
+        <div class="loc" id="loc-text">SDR HQ</div>
+        <div class="sub">Bengaluru, India</div>
+      </div>
+
+      <div class="mission-passed" id="mission-passed">
+        <div class="mp1">Mission Passed</div>
+        <div class="mp2" id="mp-reward">+Respect · +$0</div>
+      </div>
+
+      <div class="hud-quote">"Consistency is my weapon.<br>Pipeline is my world."<br>— Mukesh</div>
+      <div class="key-hint">↑ ↓ Navigate &nbsp; · &nbsp; Enter Select &nbsp; · &nbsp; Esc Exit</div>
+
+    </div>
+  </div>
+
+<script>
+(function(){
+
+  const sections = [
+    {
+      id:'start', label:'Start Game', theme:'sunset', location:'SDR HQ', sub:'Bengaluru, India',
+      objective:'Press start to begin',
+      title1:'Mukesh Kumar', title2:'Portfolio',
+      render: () => `
+        <h2>Sales Development Representative</h2>
+        <p class="lede">Outbound B2B SaaS sales · ABM campaigns · pipeline growth across US, MEA-APAC &amp; India markets.</p>
+        <p>3+ years turning cold lists into qualified pipeline. Currently open to new SDR / BDR opportunities.</p>
+        <a class="cta-btn" href="#" data-nav="contact">Get In Touch</a>
+        <a class="cta-ghost" href="https://www.linkedin.com/in/mukesh-kumar-500b8623b/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      `
+    },
+    {
+      id:'about', label:'About Me', theme:'sunset', location:'CHARACTER SELECT', sub:'Mukesh Kumar',
+      objective:'Meet the player',
+      title1:'About Me', title2:'Who I am',
+      render: () => `
+        <div class="about-head">
+          <div class="avatar-frame" id="avatar-frame">
+            <img src="assets/mukesh-photo.jpg" alt="Mukesh Kumar" onerror="this.parentElement.textContent='MK';">
+          </div>
+          <div>
+            <h2 style="margin-bottom:2px;">Mukesh Kumar</h2>
+            <p style="margin:0;color:var(--cyan);font-weight:600;">Sales Development Representative</p>
+          </div>
+        </div>
+        <p>Dynamic SDR with 3+ years of experience in B2B SaaS sales, outbound lead generation, and pipeline growth. Built an entire outbound function from zero at an early-stage AI start-up, and drove $25K in monthly recurring revenue at a global SaaS company.</p>
+        <p>Based in Bengaluru, India · Available for SDR / BDR / Sales roles in SaaS.</p>
+      `
+    },
+    {
+      id:'skills', label:'Skills', theme:'dusk', location:'SKILL TREE', sub:'Core Competencies',
+      objective:'Review unlocked abilities',
+      title1:'Skills', title2:'Abilities unlocked',
+      render: () => `
+        <div class="skill-block"><h3>Lead Generation</h3><div class="tag-row">
+          <span class="tag">B2B Lead Generation</span><span class="tag">Outbound Sales</span><span class="tag">Pipeline Growth</span><span class="tag">Cold Calling</span><span class="tag">Inside Sales</span>
+        </div></div>
+        <div class="skill-block"><h3>International Sales</h3><div class="tag-row">
+          <span class="tag">US Sales</span><span class="tag">MEA-APAC</span><span class="tag">India Markets</span><span class="tag">International Sales</span>
+        </div></div>
+        <div class="skill-block"><h3>Outreach &amp; Marketing</h3><div class="tag-row">
+          <span class="tag">Email Marketing</span><span class="tag">Multichannel Outreach</span><span class="tag">ABM Campaigns</span><span class="tag">Personalization</span>
+        </div></div>
+        <div class="skill-block"><h3>SaaS &amp; Tech Sales</h3><div class="tag-row">
+          <span class="tag">SaaS Sales</span><span class="tag">Business Development</span><span class="tag">BANT Methodology</span><span class="tag">Discovery Calls</span>
+        </div></div>
+      `
+    },
+    {
+      id:'tools', label:'Tools', theme:'night', location:'INVENTORY', sub:'Tech Stack',
+      objective:'Check equipped gear',
+      title1:'Tools', title2:'Loadout',
+      render: () => `
+        <p class="lede">The stack I run outbound on:</p>
+        <div class="inv-grid">
+          ${['Salesforce CRM','HubSpot','ZOHO CRM','LinkedIn Sales Navigator','Apollo.io','ZoomInfo','Seamless.ai','Lusha','Clay','Lemlist','Smartlead','Outplay','ChatGPT','Perplexity AI','B2Brain','Vink.ai']
+            .map(t=>`<div class="inv-slot">${t}</div>`).join('')}
+        </div>
+      `
+    },
+    {
+      id:'experience', label:'Experience', theme:'dusk', location:'MISSION LOG', sub:'Work History',
+      objective:'Review completed missions',
+      title1:'Experience', title2:"Where I've made impact",
+      render: () => `
+        <div class="job-card">
+          <span class="period">Jan 2025 – Sep 2025</span>
+          <div class="role">Sales Development Representative</div>
+          <div class="co">Dwij AI Labs</div>
+          <ul>
+            <li>Pioneered outbound as the first SDR at an early-stage AI SaaS start-up, building the function from zero.</li>
+            <li>Led outbound lead generation across mid-market and enterprise AI SaaS accounts globally.</li>
+            <li>Used Sales Navigator, Apollo, and Clay to curate high-priority target lists.</li>
+            <li>Ran personalized ABM campaigns tailored by role and tech stack.</li>
+          </ul>
+        </div>
+        <div class="job-card">
+          <span class="period">May 2022 – Nov 2024</span>
+          <div class="role">Sales Development Representative</div>
+          <div class="co">Increff</div>
+          <ul>
+            <li>Fostered qualified opportunities across North America, MEA-APAC, and India.</li>
+            <li>Drove $25,000 in monthly recurring revenue through strategic prospecting.</li>
+            <li>Achieved 100% of KPI targets across multiple quarters.</li>
+            <li>Managed leads in Salesforce CRM using BANT qualification.</li>
+          </ul>
+        </div>
+      `
+    },
+    {
+      id:'achievements', label:'Achievements', theme:'neon', location:'TROPHY ROOM', sub:'Unlocked',
+      objective:'Collect every trophy',
+      title1:'Achievements', title2:'Unlocked',
+      render: () => `
+        <div class="trophy-grid">
+          <div class="trophy"><div class="medal">🏆</div><div><div class="name">First SDR Hire</div><div class="desc">Built an outbound function from zero at an AI SaaS start-up.</div></div></div>
+          <div class="trophy"><div class="medal">💰</div><div><div class="name">$25K MRR Driven</div><div class="desc">Monthly recurring revenue generated through strategic prospecting.</div></div></div>
+          <div class="trophy"><div class="medal">🎯</div><div><div class="name">100% KPI Achievement</div><div class="desc">Hit targets consistently across multiple quarters.</div></div></div>
+          <div class="trophy"><div class="medal">🌍</div><div><div class="name">3 Global Markets</div><div class="desc">US, MEA-APAC, and India — covered and closed.</div></div></div>
+        </div>
+      `
+    },
+    {
+      id:'education', label:'Education', theme:'dawn', location:'CAMPUS', sub:'Character Stats',
+      objective:'View character build',
+      title1:'Education', title2:'Character stats',
+      render: () => `
+        <div class="edu-grid">
+          <div class="edu-card"><div class="yr">2022</div><div class="deg">MBA / PGDM — Operations</div><div class="sch">KL University</div></div>
+          <div class="edu-card"><div class="yr">2020</div><div class="deg">B.A — History</div><div class="sch">Osmania University · Grade 9.3/10</div></div>
+          <div class="edu-card"><div class="yr">2017</div><div class="deg">12th — English Medium</div><div class="sch">AP State Board · 91.0%</div></div>
+          <div class="edu-card"><div class="yr">2015</div><div class="deg">10th — English Medium</div><div class="sch">AP State Board · 78.0%</div></div>
+        </div>
+      `
+    },
+    {
+      id:'contact', label:'Contact', theme:'sunset', location:'VICE BEACH', sub:"Let's Connect",
+      objective:'Send a message',
+      title1:'Contact', title2:"Let's connect",
+      render: () => `
+        <p class="lede">Open to new opportunities — based in Bengaluru, India.</p>
+        <div class="contact-row">✉️ <a href="mailto:mukesh.sdr0208@gmail.com">mukesh.sdr0208@gmail.com</a></div>
+        <div class="contact-row">📞 <a href="tel:+919676803936">+91-9676803936</a></div>
+        <div class="contact-row">💼 <a href="https://www.linkedin.com/in/mukesh-kumar-500b8623b/" target="_blank" rel="noopener noreferrer">LinkedIn Profile</a></div>
+        <a class="cta-btn" href="mailto:mukesh.sdr0208@gmail.com">Send Message</a>
+        <a class="cta-ghost" href="index.html">Exit Game</a>
+      `
+    },
+  ];
+
+  const menu = document.getElementById('menu');
+  const panel = document.getElementById('panel');
+  const scene = document.getElementById('scene');
+  const titleEl1 = document.getElementById('hud-title-1');
+  const titleEl2 = document.getElementById('hud-title-2');
+  const locToast = document.getElementById('location-toast');
+  const locText = document.getElementById('loc-text');
+  const locSub = locToast.querySelector('.sub');
+  const objectiveText = document.getElementById('objective-text');
+  const missionPassed = document.getElementById('mission-passed');
+  const mpReward = document.getElementById('mp-reward');
+  const cashEl = document.getElementById('cash');
+  const starsEl = document.getElementById('stars');
+  const clockEl = document.getElementById('clock');
+
+  let visited = new Set();
+  let cash = 1250000;
+  let currentIndex = 0;
+
+  // Build menu
+  sections.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.dataset.id = s.id;
+    btn.innerHTML = `<span class="chk"></span>${s.label}`;
+    btn.addEventListener('click', () => goTo(i));
+    menu.appendChild(btn);
+  });
+  const exitBtn = document.createElement('a');
+  exitBtn.href = 'index.html';
+  exitBtn.className = 'exit-btn';
+  exitBtn.style.cssText = 'font-weight:600;letter-spacing:.04em;font-size:0.85rem;text-transform:uppercase;text-decoration:none;padding:6px 10px;display:block;';
+  exitBtn.textContent = 'Exit Game';
+  menu.appendChild(exitBtn);
+
+  function renderMenu(){
+    [...menu.querySelectorAll('button')].forEach((btn, i) => {
+      btn.classList.toggle('active', i === currentIndex);
+      btn.querySelector('.chk').textContent = visited.has(sections[i].id) ? '✓' : '';
+    });
+  }
+
+  function animateCash(to){
+    const from = cash;
+    const start = performance.now();
+    const dur = 700;
+    function step(now){
+      const t = Math.min(1, (now-start)/dur);
+      const eased = 1 - Math.pow(1-t, 3);
+      cash = Math.round(from + (to-from)*eased);
+      cashEl.textContent = '$' + cash.toLocaleString('en-US');
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function renderStars(){
+    const filled = Math.min(5, 1 + visited.size);
+    starsEl.innerHTML = '★'.repeat(filled) + [...Array(5-filled)].map(()=>'<span class="dim">★</span>').join('');
+  }
+
+  function buildSkyline(){
+    const el = document.getElementById('skyline');
+    el.innerHTML = '';
+    const n = 22;
+    for (let i=0;i<n;i++){
+      const div = document.createElement('div');
+      const h = 20 + Math.round(Math.abs(Math.sin(i*1.7))*70) + (i%5===0?30:0);
+      div.className = 'bldg';
+      div.style.width = (100/n) + '%';
+      div.style.height = h + '%';
+      const winCount = Math.round(h/12);
+      for (let w=0; w<winCount; w++){
+        const win = document.createElement('i');
+        win.style.left = (10 + Math.random()*70) + '%';
+        win.style.bottom = (8 + w*16 + Math.random()*4) + '%';
+        if (Math.random() < 0.4) win.style.opacity = '0.15';
+        div.appendChild(win);
+      }
+      el.appendChild(div);
+    }
+  }
+  buildSkyline();
+
+  function goTo(index, {skipTransition} = {}){
+    const s = sections[index];
+    currentIndex = index;
+
+    const doRender = () => {
+      scene.dataset.theme = s.theme;
+      titleEl1.textContent = s.title1;
+      titleEl2.textContent = s.title2;
+      objectiveText.textContent = s.objective;
+      panel.innerHTML = s.render();
+      panel.classList.remove('panel');
+      void panel.offsetWidth;
+      panel.classList.add('panel');
+
+      locText.textContent = s.location;
+      locSub.textContent = s.sub;
+      locToast.classList.add('show');
+      setTimeout(()=> locToast.classList.remove('show'), 2200);
+
+      panel.querySelectorAll('[data-nav]').forEach(a=>{
+        a.addEventListener('click', (e)=>{
+          e.preventDefault();
+          const idx = sections.findIndex(sec=>sec.id===a.dataset.nav);
+          if (idx>-1) goTo(idx);
+        });
+      });
+
+      visited.add(s.id);
+      animateCash(1250000 + visited.size*375000);
+      renderStars();
+      renderMenu();
+    };
+
+    if (skipTransition){
+      doRender();
+      return;
+    }
+
+    mpReward.textContent = `+Respect · +$${(250000).toLocaleString('en-US')}`;
+    missionPassed.classList.add('show');
+    setTimeout(()=>{
+      doRender();
+      missionPassed.classList.remove('show');
+    }, 500);
+  }
+
+  // Keyboard navigation
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown'){ e.preventDefault(); goTo((currentIndex+1) % sections.length); }
+    if (e.key === 'ArrowUp'){ e.preventDefault(); goTo((currentIndex-1+sections.length) % sections.length); }
+    if (e.key === 'Escape'){ window.location.href = 'index.html'; }
+  });
+
+  // Live clock
+  function tick(){
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    clockEl.textContent = `${hh}:${mm}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // init
+  goTo(0, {skipTransition:true});
+})();
+</script>
+</body>
+</html>
