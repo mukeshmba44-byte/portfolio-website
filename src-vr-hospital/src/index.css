@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy-900: #04101f;
+    --navy-800: #071b31;
+    --navy-700: #0a2745;
+    --gold-500: #e2b569;
+    --cream-50: #fbf8f3;
+    color-scheme: dark;
+  }
+
+  html {
+    /* Lenis owns the scroll; keep the native smooth-scroll out of its way. */
+    scroll-behavior: auto;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--navy-900);
+    color: var(--cream-50);
+    font-family: theme('fontFamily.sans');
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Lenis sets these while it is driving the page. */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: var(--gold-500);
+    color: var(--navy-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gold-500);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Headline reveal: a warm light sweep travels across the type once on load. */
+  .light-sweep {
+    background-image: linear-gradient(
+      100deg,
+      #f4ede1 0%,
+      #f4ede1 32%,
+      #fff8e8 44%,
+      #f0cf94 50%,
+      #fff8e8 56%,
+      #f4ede1 68%,
+      #f4ede1 100%
+    );
+    background-size: 260% 100%;
+    background-position: 130% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: sweep 2.4s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+  }
+
+  @keyframes sweep {
+    from {
+      background-position: 130% 0;
+    }
+    to {
+      background-position: -30% 0;
+    }
+  }
+
+  .glass-card {
+    background: linear-gradient(
+      160deg,
+      rgba(18, 46, 78, 0.62) 0%,
+      rgba(7, 27, 49, 0.52) 100%
+    );
+    border: 1px solid rgba(226, 181, 105, 0.22);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.9);
+  }
+
+  .rule-gold {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(226, 181, 105, 0.75),
+      transparent
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .light-sweep {
+    animation: none;
+    background-position: 50% 0;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
