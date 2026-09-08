@@ -4,6 +4,7 @@ import { useExperienceMode } from './lib/useDevice.js'
 import { useSmoothScroll } from './lib/useSmoothScroll.js'
 import LiteExperience from './lite/LiteExperience.jsx'
 import WhatsAppButton from './ui/WhatsAppButton.jsx'
+import ModeToggle from './ui/ModeToggle.jsx'
 
 /**
  * three.js, R3F and GSAP live behind this dynamic import. A phone that gets the
@@ -13,7 +14,7 @@ import WhatsAppButton from './ui/WhatsAppButton.jsx'
 const Immersive = lazy(() => import('./experience/Immersive.jsx'))
 
 export default function App() {
-  const mode = useExperienceMode()
+  const [mode, chooseMode] = useExperienceMode()
   const lenis = useSmoothScroll(true)
 
   return (
@@ -25,6 +26,7 @@ export default function App() {
       ) : (
         <LiteExperience />
       )}
+      <ModeToggle mode={mode} onChange={chooseMode} />
       <WhatsAppButton />
     </>
   )

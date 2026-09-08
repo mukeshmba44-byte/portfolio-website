@@ -12,10 +12,18 @@ Centre, Pedda Narava, Visakhapatnam.
 | Ships | React + Framer Motion + Lenis **+ three.js + R3F + GSAP** | React + Framer Motion + Lenis only |
 | JS over the wire | ~372 kB gzip | **~99 kB gzip** |
 
-`src/lib/useDevice.js` picks between them. three.js sits behind a dynamic
-`import()`, so a phone never downloads it — that is the point of the mobile
-fallback, not just the simpler animation. Add `?mode=lite` or `?mode=3d` to
-force either version.
+`src/lib/useDevice.js` picks between them, and **a toggle in the bottom-left
+corner lets the visitor overrule that guess**; the choice is remembered.
+`?mode=lite` and `?mode=3d` force a version too.
+
+The guess is deliberately generous toward the 3D version: it steps down to lite
+only for a viewport under 900px, a touch screen *with* a phone-sized viewport,
+two cores or fewer, Save-Data, a slow connection, reduced-motion, or no WebGL.
+A touch screen on its own is not a reason — plenty of capable laptops have one.
+
+three.js sits behind a dynamic `import()`, so anyone on the lite version never
+downloads it — that is the point of the fallback, not just the simpler
+animation.
 
 ## How the 3D section works
 

@@ -60,7 +60,7 @@ export default function PhotoPanel({
     }
   }, [texture, photo.w, photo.h, width])
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, size }) => {
     if (!mesh.current) return
     const p = progressRef.current.value
     const m = mesh.current
@@ -101,7 +101,14 @@ export default function PhotoPanel({
     m.material.uniforms.uFocus.value = eased
     m.material.uniforms.uBlur.value = clamp(1 - eased * 1.15)
 
-    m.scale.setScalar(lerp(0.86, 1, eased))
+    // A portrait viewport sees a far narrower slice of the scene than the 16:9
+    // frame the corridor is laid out for. Shrink the panels and pull them in
+    // toward the walkway so they still fit, rather than running off both edges.
+    const aspect = size.width / Math.max(size.height, 1)
+    const narrow = clamp((1.35 - aspect) / 0.85)
+    const fit = lerp(1, 0.5, narrow)
+
+    m.scale.setScalar(lerp(0.86, 1, eased) * fit)
 
     if (squareOn) {
       m.rotation.set(0, 0, 0)
@@ -115,7 +122,7 @@ export default function PhotoPanel({
 
     // A touch of parallax: panels ease toward the walkway as they focus, then
     // drift back out as the camera goes past.
-    m.position.x = position[0] * lerp(1.12, 0.9, eased)
+    m.position.x = position[0] * lerp(1.12, 0.9, eased) * lerp(1, 0.42, narrow)
     m.position.y = position[1] + camera.position.y * 0.12
   })
 

@@ -31,7 +31,7 @@ function CameraRig({ progressRef }) {
   const roll = useRef(0)
   const lastX = useRef(0)
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const p = progressRef.current.value
     cameraAt(p, cameraTarget)
 
@@ -67,9 +67,12 @@ function CameraRig({ progressRef }) {
     roll.current = lerp(roll.current, clamp(-vx * 0.011, -0.05, 0.05), 0.06)
     camera.rotation.z += roll.current
 
-    // Tighten the lens for the closing shot so the building fills the frame.
+    // Tighten the lens for the closing shot so the building fills the frame,
+    // and open it up on a portrait viewport, which is short of horizontal view.
     const closing = smoothstep(SECTIONS.trust[1], 0.99, p)
-    const fov = lerp(46, 40, closing)
+    const aspect = state.size.width / Math.max(state.size.height, 1)
+    const narrow = clamp((1.35 - aspect) / 0.85)
+    const fov = lerp(46, 40, closing) + narrow * 14
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov
       camera.updateProjectionMatrix()
