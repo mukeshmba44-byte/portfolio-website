@@ -1,0 +1,4 @@
+node_modules
+# Intermediate output of `npm run build:single`; the finished single file is
+# vr-hospital-standalone.html.
+.single-build

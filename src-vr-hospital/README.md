@@ -62,9 +62,17 @@ All copy lives in `src/data/content.js`. Figures carry a `source` field:
 
 ```bash
 npm install
-npm run dev      # local dev server
-npm run build    # writes the built site to ../vr-hospital
+npm run dev           # local dev server
+npm run build         # writes the built site to ../vr-hospital
+npm run build:single  # writes ../vr-hospital-standalone.html
 ```
+
+`build:single` folds the JavaScript, the stylesheet and every photograph into
+one HTML file that runs from any host with nothing beside it. It cannot keep
+the code-split — there is nowhere to fetch a second chunk from — so every
+visitor downloads three.js whether or not they get the 3D version: roughly
+650 kB gzipped against about 160 kB for a phone loading `../vr-hospital`.
+Prefer the folder build unless a single file is genuinely easier to deploy.
 
 The built output is committed because this repository is published with GitHub
 Pages' "deploy from branch", which does not run a build step. Rebuild and
