@@ -7,7 +7,7 @@
  * beside it.
  */
 import { readFile, writeFile, readdir } from 'node:fs/promises'
-import { join, dirname, extname } from 'node:path'
+import { join, dirname, extname, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -22,13 +22,33 @@ async function dataUri(path) {
   return `data:${mime};base64,${buf.toString('base64')}`
 }
 
-/** Collect every image the bundle refers to by path, as a data: URI. */
+/**
+ * Every static file the build emitted, as a data: URI keyed by the path the
+ * bundle refers to it by.
+ *
+ * This walks the tree rather than naming files: a hardcoded list silently
+ * missed logo-mark.webp, which left a relative path in a file that has no
+ * directory to resolve it against, and the failed texture load took the whole
+ * page down with it.
+ */
 async function collectAssets() {
   const map = new Map()
-  map.set('logo.webp', await dataUri(join(dist, 'logo.webp')))
-  for (const name of await readdir(join(dist, 'photos'))) {
-    map.set(`photos/${name}`, await dataUri(join(dist, 'photos', name)))
+  const skip = new Set(['.html', '.js', '.css', '.map'])
+
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === 'assets') continue // JS and CSS are inlined separately
+        await walk(full)
+        continue
+      }
+      if (skip.has(extname(entry.name))) continue
+      map.set(relative(dist, full).split(sep).join('/'), await dataUri(full))
+    }
   }
+
+  await walk(dist)
   return map
 }
 
@@ -66,7 +86,13 @@ html = html
   // A preload of an inlined image would be a second copy of the same bytes.
   .replace(/<link rel="preload"[^>]*>/g, '')
 
+// Nothing may still point at a file on disk: the single HTML file has no
+// directory to resolve a relative path against.
 if (html.includes('./assets/')) throw new Error('an external asset reference survived inlining')
+const leftovers = [...assets.keys()].filter((name) => html.includes(name))
+if (leftovers.length) {
+  throw new Error(`asset reference(s) survived inlining: ${leftovers.join(', ')}`)
+}
 
 await writeFile(out, html)
 

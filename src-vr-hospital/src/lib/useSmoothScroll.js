@@ -8,7 +8,7 @@ import Lenis from 'lenis'
  * Touch smoothing is deliberately left off: phones already have good native
  * momentum, and intercepting it makes a page feel laggy rather than smooth.
  */
-export function useSmoothScroll(enabled = true) {
+export function useSmoothScroll(enabled = true, { startStopped = false } = {}) {
   const [lenis, setLenis] = useState(null)
 
   useEffect(() => {
@@ -28,6 +28,10 @@ export function useSmoothScroll(enabled = true) {
       touchMultiplier: 1.6,
       wheelMultiplier: 1,
     })
+
+    // The intro locks the page; Lenis starts stopped and is released when it
+    // finishes.
+    if (startStopped) instance.stop()
 
     let frame
     const raf = (time) => {

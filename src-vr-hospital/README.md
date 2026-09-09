@@ -4,26 +4,39 @@ Source for the site published at [`/vr-hospital/`](../vr-hospital/) — a
 scroll-scrubbed 3D walkthrough of VR Multispeciality Hospital & Diagnostic
 Centre, Pedda Narava, Visakhapatnam.
 
-## Two experiences, one set of content
+## The opening
 
-| | Immersive (desktop / pointer) | Lite (touch, small, reduced-motion, Save-Data) |
-|---|---|---|
-| Motion | WebGL camera scrubbed along a corridor by scroll | 2D parallax, focus and fade |
-| Ships | React + Framer Motion + Lenis **+ three.js + R3F + GSAP** | React + Framer Motion + Lenis only |
-| JS over the wire | ~372 kB gzip | **~99 kB gzip** |
+On load, a syringe stands in a dark, softly lit room. Pressing the plunger
+sends a droplet down the screen carrying the hospital's mark inside it, and its
+impact ripples out to wash in the site.
 
-`src/lib/useDevice.js` picks between them, and **a toggle in the bottom-left
-corner lets the visitor overrule that guess**; the choice is remembered.
-`?mode=lite` and `?mode=3d` force a version too.
+`src/experience/Intro.jsx` runs the whole thing as one GSAP timeline writing
+into plain refs that the R3F frame loop reads — the same pattern the main scene
+uses for scroll, so animation only ever reaches the 3D layer one way. The page
+is scroll-locked (Lenis stopped) until it finishes, and the site is mounted
+underneath while the droplet is still falling, so the ripple uncovers the real
+page rather than a loading state. `prefers-reduced-motion` skips straight to
+the site.
 
-The guess is deliberately generous toward the 3D version: it steps down to lite
-only for a viewport under 900px, a touch screen *with* a phone-sized viewport,
-two cores or fewer, Save-Data, a slow connection, reduced-motion, or no WebGL.
-A touch screen on its own is not a reason — plenty of capable laptops have one.
+The syringe (`Syringe.jsx`) is modelled from primitives with its needle tip at
+the group origin, so the scene can place and scale it by the one point that
+matters — where the droplet is born. Nothing uses `transmission`: it makes
+three render the scene again into a separate buffer every frame, which is far
+too expensive on modest hardware for the small gain over a reflective
+transparent material.
 
-three.js sits behind a dynamic `import()`, so anyone on the lite version never
-downloads it — that is the point of the fallback, not just the simpler
-animation.
+The droplet (`Droplet.jsx`) samples the logo in its own object space rather
+than from a UV sphere map, so the mark reads as flat and suspended *inside* the
+liquid, and is clipped to the droplet's silhouette for free.
+
+## One experience
+
+Every visitor gets the 3D walkthrough. three.js still sits behind a dynamic
+import so the page can paint immediately rather than waiting on the bundle.
+
+`lite/LiteExperience.jsx` is no longer something anyone is routed to — it
+survives only as a fallback for a browser without WebGL, which would otherwise
+be shown a blank page.
 
 ## How the 3D section works
 

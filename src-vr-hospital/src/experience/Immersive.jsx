@@ -19,7 +19,7 @@ gsap.registerPlugin(ScrollTrigger)
  * flicking the wheel glides the camera down the corridor and settles, instead
  * of snapping frame-to-frame with the scrollbar.
  */
-export default function Immersive({ lenis }) {
+export default function Immersive({ lenis, scrollEnabled = true }) {
   const containerRef = useRef(null)
   const progressRef = useRef({ value: 0 })
   const progress = useMotionValue(0)
@@ -28,15 +28,16 @@ export default function Immersive({ lenis }) {
 
   // Lenis drives the scroll, so ScrollTrigger has to be told when it moves.
   useEffect(() => {
-    if (!lenis) return undefined
+    if (!lenis || !scrollEnabled) return undefined
     const update = () => ScrollTrigger.update()
     lenis.on('scroll', update)
     gsap.ticker.lagSmoothing(0)
     ScrollTrigger.refresh()
     return () => lenis.off('scroll', update)
-  }, [lenis])
+  }, [lenis, scrollEnabled])
 
   useEffect(() => {
+    if (!scrollEnabled) return undefined
     const proxy = { value: 0 }
     let lastPanel = -1
 
@@ -78,7 +79,7 @@ export default function Immersive({ lenis }) {
       tween.scrollTrigger?.kill()
       tween.kill()
     }
-  }, [progress])
+  }, [progress, scrollEnabled])
 
   return (
     <>

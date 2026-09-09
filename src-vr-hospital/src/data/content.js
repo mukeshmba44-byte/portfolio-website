@@ -21,8 +21,16 @@ export const hospital = {
   phone: '+91 73864 36637',
   phoneHref: 'tel:+917386436637',
   whatsapp: 'https://wa.me/917386436637',
+  // wa.me opens the chat with this text already typed into the box, so the
+  // patient only has to add their own details and hit send.
   whatsappText:
-    'https://wa.me/917386436637?text=Hello%20VR%20Multispeciality%20Hospital%2C%20I%20would%20like%20to%20book%20an%20appointment.',
+    'https://wa.me/917386436637?text=' +
+    encodeURIComponent(
+      'Hello VR Multispeciality Hospital, I would like to book an appointment.\n\n' +
+        'Name:\n' +
+        'Preferred day & time:\n' +
+        'Reason for visit:'
+    ),
   mapsHref:
     'https://www.google.com/maps/search/?api=1&query=VR+Multispeciality+Hospital+Pedda+Narava+Visakhapatnam',
 }
